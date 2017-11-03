@@ -1,0 +1,95 @@
+---
+title: 'Final Project: Beta-Dist Metropolis Hastings'
+output: html_document
+---
+### M-H Code
+
+```{r}
+# Metropolis-Hastings function to run on a beta distribution with parameters (shape1, shape2) and proposal function with parameter c
+mh.beta <- function(n.sims, burnin, shape1, shape2, c) {
+  # Generates a random starting point between 0 and 1
+  theta.cur <- runif(1,0,1)
+  draws <- c()
+  # Updating function that proposes a new value for the distribution and evaluates whether to add it to the list of accepted values
+  theta.update <- function(theta.cur, shape1, shape2, c) {
+    # Offers new candidate based on the given proposal function
+    theta.can <- rbeta(1, c*theta.cur, c*(1-theta.cur))
+    # Compares the pdf of the candidate value of that of the last value
+    # If this ratio is high, there is a high chance the new value will be accepted
+    accept.prob <- dbeta(theta.can, shape1 = shape1, shape2 = shape2)/dbeta(theta.cur,shape1 = shape1, shape2 = shape2)
+    # Accept the proposed value into the distribution if a random value from 0 to 1 is less than it
+    if (runif(1) <= accept.prob) theta.can else {theta.cur}
+  }
+  # Iterate the M-H algorithm n.sims times
+  for (i in 1:n.sims) {
+    draws[i] <- theta.cur <- theta.update(theta.cur, shape1 = shape1,
+                                          shape2 = shape2, c=c)
+  }
+  return(draws[(burnin + 1):n.sims])
+}
+
+```
+
+This Metropolis-Hastings algorithm allows for the proposal of beta distribution parameters and estimates values from the distribtion Beta~(shape1,shape2).  It uses the proposal function $$ \theta_{new} | \theta_{old} \sim Beta(c\theta_{old}, 1-c\theta_{old}) $$
+to generate new proposal values based off the previously accepted one.  The algorithm then evaluates the new proposal beta pdf and compares it as a ratio to the old accepted beta pdf.  Finally, if this ratio is greater than a random number from 0 to 1, the propsed vaue is accepted.
+
+```{r, echo = 1}
+mh.draws <- mh.beta(10000, 0, 4, 6, 1)
+trueBeta <- rbeta(10000, 4,6)
+
+par(mfrow=c(2,2))  #2 rows, 2 columns
+plot(mh.draws, main = 'Trace plot of draws'); acf(mh.draws, main = 'Autocorrelation plot of draws'); hist(mh.draws, main = 'Histogram of 10000 draws'); hist(trueBeta, main = 'Histogram of 10000 points on true beta(4,6) distribution')  #plot commands
+```
+
+Graphically, the M-H plot and the true Beta(4,6) plot look similar but notably different with n=10000, no burnIn, and c=1
+
+
+```{r}
+drawsCDF <- ecdf(mh.draws)
+realCDF<- ecdf(trueBeta)
+x <- seq(0,1,0.01)
+max(drawsCDF(x)-realCDF(x))
+```
+
+A Kolmagorov-Smirnov test comparing the distributions under these conditions reveals a mild deviation from each other.
+
+```{r}
+mh.draws <- mh.beta(10000, 0, 4, 6, 0.1)
+
+par(mfrow=c(2,2))  #2 rows, 2 columns
+plot(mh.draws, main = 'Trace plot of draws'); acf(mh.draws, main = 'Autocorrelation plot of draws'); hist(mh.draws, main = 'Histogram of 10000 draws, c = 0.1'); hist(trueBeta, main = 'Histogram of 10000 points on true beta(4,6) distribution')  #plot commands
+
+drawsCDF <- ecdf(mh.draws)
+realCDF<- ecdf(trueBeta)
+x <- seq(0,1,0.01)
+max(drawsCDF(x)-realCDF(x))
+
+```
+
+```{r}
+mh.draws <- mh.beta(10000, 0, 4, 6, 2.5)
+
+par(mfrow=c(2,2))  #2 rows, 2 columns
+plot(mh.draws, main = 'Trace plot of draws'); acf(mh.draws, main = 'Autocorrelation plot of draws'); hist(mh.draws, main = 'Histogram of 10000 draws, c = 2.5'); hist(trueBeta, main = 'Histogram of 10000 points on true beta(4,6) distribution')  #plot commands
+
+drawsCDF <- ecdf(mh.draws)
+realCDF<- ecdf(trueBeta)
+x <- seq(0,1,0.01)
+max(drawsCDF(x)-realCDF(x))
+
+```
+
+```{r}
+mh.draws <- mh.beta(10000, 0, 4, 6, 10)
+
+par(mfrow=c(2,2))  #2 rows, 2 columns
+plot(mh.draws, main = 'Trace plot of draws'); acf(mh.draws, main = 'Autocorrelation plot of draws'); hist(mh.draws, main = 'Histogram of 10000 draws, c = 10'); hist(trueBeta, main = 'Histogram of 10000 points on true beta(4,6) distribution')  #plot commands
+
+drawsCDF <- ecdf(mh.draws)
+realCDF<- ecdf(trueBeta)
+x <- seq(0,1,0.01)
+max(drawsCDF(x)-realCDF(x))
+
+```
+
+Running the algorithm for different c values reveals that a higher c value produces a tighter correlation to the actual beta distribution.
